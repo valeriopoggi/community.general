@@ -176,14 +176,19 @@ operation:
     sample: update
 """
 
-from ansible.module_utils.basic import to_text, AnsibleModule
+from ansible.module_utils.basic import to_text, AnsibleModule, missing_required_lib
+from ansible_collections.community.general.plugins.module_utils.consul import (
+    get_consul_url, get_auth_headers, handle_consul_response_error)
+
+REQUESTS_IMP_ERR = None
 
 try:
     from requests.exceptions import ConnectionError
     import requests
-    has_requests = True
+    HAS_REQUESTS = True
 except ImportError:
-    has_requests = False
+    HAS_REQUESTS = False
+    REQUESTS_IMP_ERR = traceback.format_exc()
 
 
 MANAGEMENT_PARAMETER_NAME = "mgmt_token"
@@ -478,27 +483,16 @@ class Output:
         self.token = token          # type: dict
 
 
-def check_dependencies():
-    """
-    Checks that the required dependencies have been imported.
-    :exception ImportError: if it is detected that any of the required dependencies have not been imported
-    """
-
-    if not has_requests:
-        raise ImportError(
-            "requests required for this module. See https://pypi.org/project/requests/")
-
-
 def main():
     """
     Main method.
     """
     module = AnsibleModule(_ARGUMENT_SPEC, supports_check_mode=False)
 
-    try:
-        check_dependencies()
-    except ImportError as e:
-        module.fail_json(msg=str(e))
+    if not HAS_REQUESTS:
+        module.fail_json(msg=missing_required_lib("requests"),
+                         exception=REQUESTS_IMP_ERR)
+
     try:
         configuration = Configuration(
             management_token=module.params.get(MANAGEMENT_PARAMETER_NAME),
