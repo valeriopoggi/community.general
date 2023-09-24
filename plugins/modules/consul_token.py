@@ -179,6 +179,8 @@ operation:
 from ansible.module_utils.basic import to_text, AnsibleModule, missing_required_lib
 from ansible_collections.community.general.plugins.module_utils.consul import (
     get_consul_url, get_auth_headers, handle_consul_response_error)
+from ansible_collections.community.general.plugins.module_utils.consul import (
+    ConsulVersion, ServiceIdentity, NodeIdentity, RoleLink, PolicyLink)
 
 REQUESTS_IMP_ERR = None
 
@@ -230,26 +232,6 @@ _ARGUMENT_SPEC = {
     TOKEN_PARAMETER_NAME: dict(type='str', no_log=False),
     STATE_PARAMETER_NAME: dict(default=PRESENT_STATE_VALUE, choices=[PRESENT_STATE_VALUE, ABSENT_STATE_VALUE]),
 }
-
-
-def get_consul_url(configuration):
-    return '%s://%s:%s/v1' % (configuration.scheme, configuration.host, configuration.port)
-
-
-def get_auth_headers(configuration):
-    if configuration.management_token is None:
-        return {}
-    else:
-        return {'X-Consul-Token': configuration.management_token}
-
-
-class RequestError(Exception):
-    pass
-
-
-def handle_consul_response_error(response):
-    if 400 <= response.status_code < 600:
-        raise RequestError('%d %s' % (response.status_code, response.content))
 
 
 def update_token(token, configuration):
@@ -377,76 +359,6 @@ def set_token(configuration):
         return update_token(token, configuration)
     else:
         return create_token(configuration)
-
-
-class ConsulVersion():
-    def __init__(self, version_string):
-        split = version_string.split('.')
-        self.major = split[0]
-        self.minor = split[1]
-        self.patch = split[2]
-
-    def __ge__(self, other):
-        return int(self.major + self.minor +
-                   self.patch) >= int(other.major + other.minor + other.patch)
-
-    def __le__(self, other):
-        return int(self.major + self.minor +
-                   self.patch) <= int(other.major + other.minor + other.patch)
-
-
-class ServiceIdentity:
-    def __init__(self, input):
-        if not isinstance(input, dict) or 'name' not in input:
-            raise ValueError(
-                "Each element of service_identities must be a dict with the keys name and optionally datacenters")
-        self.name = input["name"]
-        self.datacenters = input["datacenters"] if "datacenters" in input else None
-
-    def to_dict(self):
-        return {
-            "ServiceName": self.name,
-            "Datacenters": self.datacenters
-        }
-
-
-class NodeIdentity:
-    def __init__(self, input):
-        if not isinstance(input, dict) or 'name' not in input:
-            raise ValueError(
-                "Each element of node_identities must be a dict with the keys name and optionally datacenter")
-        self.name = input["name"]
-        self.datacenter = input["datacenter"] if "datacenter" in input else None
-
-    def to_dict(self):
-        return {
-            "NodeName": self.name,
-            "Datacenter": self.datacenter
-        }
-
-
-class RoleLink:
-    def __init__(self, dict):
-        self.id = dict.get("id", None)
-        self.name = dict.get("name", None)
-
-    def to_dict(self):
-        return {
-            "ID": self.id,
-            "Name": self.name
-        }
-
-
-class PolicyLink:
-    def __init__(self, dict):
-        self.id = dict.get("id", None)
-        self.name = dict.get("name", None)
-
-    def to_dict(self):
-        return {
-            "ID": self.id,
-            "Name": self.name
-        }
 
 
 class Configuration:

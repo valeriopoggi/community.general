@@ -27,3 +27,72 @@ class RequestError(Exception):
 def handle_consul_response_error(response):
     if 400 <= response.status_code < 600:
         raise RequestError('%d %s' % (response.status_code, response.content))
+
+
+class ConsulVersion:
+    def __init__(self, version_string):
+        split = version_string.split('.')
+        self.major = split[0]
+        self.minor = split[1]
+        self.patch = split[2]
+
+    def __ge__(self, other):
+        return int(self.major + self.minor +
+                   self.patch) >= int(other.major + other.minor + other.patch)
+
+    def __le__(self, other):
+        return int(self.major + self.minor +
+                   self.patch) <= int(other.major + other.minor + other.patch)
+
+class ServiceIdentity:
+    def __init__(self, input):
+        if not isinstance(input, dict) or 'name' not in input:
+            raise ValueError(
+                "Each element of service_identities must be a dict with the keys name and optionally datacenters")
+        self.name = input["name"]
+        self.datacenters = input["datacenters"] if "datacenters" in input else None
+
+    def to_dict(self):
+        return {
+            "ServiceName": self.name,
+            "Datacenters": self.datacenters
+        }
+
+
+class NodeIdentity:
+    def __init__(self, input):
+        if not isinstance(input, dict) or 'name' not in input:
+            raise ValueError(
+                "Each element of node_identities must be a dict with the keys name and optionally datacenter")
+        self.name = input["name"]
+        self.datacenter = input["datacenter"] if "datacenter" in input else None
+
+    def to_dict(self):
+        return {
+            "NodeName": self.name,
+            "Datacenter": self.datacenter
+        }
+
+
+class RoleLink:
+    def __init__(self, dict):
+        self.id = dict.get("id", None)
+        self.name = dict.get("name", None)
+
+    def to_dict(self):
+        return {
+            "ID": self.id,
+            "Name": self.name
+        }
+
+
+class PolicyLink:
+    def __init__(self, dict):
+        self.id = dict.get("id", None)
+        self.name = dict.get("name", None)
+
+    def to_dict(self):
+        return {
+            "ID": self.id,
+            "Name": self.name
+        }
